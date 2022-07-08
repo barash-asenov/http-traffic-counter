@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"sync"
 	"time"
 )
 
@@ -10,6 +11,8 @@ type Request struct {
 }
 
 type Requests []Request
+
+var m sync.Mutex
 
 // LoadRequests loads requests from disk
 func LoadRequests(content []byte) (*Requests, error) {
@@ -24,14 +27,18 @@ func LoadRequests(content []byte) (*Requests, error) {
 	return requests, nil
 }
 
-func (r *Requests) Add(request Request) {
-	*r = append(*r, request)
+func (r *Requests) Add(request *Request) {
+	m.Lock()
+	defer m.Unlock()
+	*r = append(*r, *request)
 }
 
 func (r *Requests) CountWithin(time time.Time) int {
 	totalCount := 0
 
 	// iterate backwards, from the latest and the newest request
+	m.Lock()
+	defer m.Unlock()
 	for i := len(*r) - 1; i >= 0; i-- {
 		if (*r)[i].Timestamp.After(time) {
 			totalCount++
@@ -46,6 +53,8 @@ func (r *Requests) CountWithin(time time.Time) int {
 
 // AsJSON returns byte array of marshalled JSON data
 func (r *Requests) AsJSON() ([]byte, error) {
+	m.Lock()
+	defer m.Unlock()
 	data, err := json.Marshal(*r)
 	if err != nil {
 		return nil, err
@@ -62,6 +71,8 @@ func (r *Requests) RemoveOlderFrom(timestamp time.Time) {
 	// index from start to remove
 	toRemoveIndex := 0
 
+	m.Lock()
+	defer m.Unlock()
 	for _, val := range *r {
 		if val.Timestamp.Before(timestamp) {
 			toRemoveIndex++

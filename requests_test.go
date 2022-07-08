@@ -50,6 +50,13 @@ func TestRequests_RemoveOlderFrom(t *testing.T) {
 	}
 }
 
-func TestLoadRequests(t *testing.T) {
+func TestRequests_Add(t *testing.T) {
+	requests := Requests{}
+	newRequest := &Request{time.Now()}
 
+	requests.Add(newRequest)
+
+	if !reflect.DeepEqual(Requests{*newRequest}, requests) {
+		t.Error("not successful add operation")
+	}
 }
