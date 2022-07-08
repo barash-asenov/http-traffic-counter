@@ -9,10 +9,10 @@ import (
 func TestRequests_CountWithin(t *testing.T) {
 	// create requests, older will be first
 	requests := Requests{
-		Request{time.Now().Add(-1 * time.Minute)},
-		Request{time.Now().Add(-59 * time.Second)},
-		Request{time.Now().Add(-5 * time.Second)},
-		Request{time.Now()},
+		Data: []Request{{time.Now().Add(-1 * time.Minute)},
+			{time.Now().Add(-59 * time.Second)},
+			{time.Now().Add(-5 * time.Second)},
+			{time.Now()}},
 	}
 
 	requestCount := requests.CountWithin(time.Now().Add(-1 * time.Minute))
@@ -37,15 +37,15 @@ func TestRequests_CountWithin(t *testing.T) {
 func TestRequests_RemoveOlderFrom(t *testing.T) {
 	// create requests, older will be first
 	requests := Requests{
-		Request{time.Now().Add(-1 * time.Minute)},
-		Request{time.Now().Add(-59 * time.Second)},
-		Request{time.Now().Add(-5 * time.Second)},
-		Request{time.Now()},
+		Data: []Request{{time.Now().Add(-1 * time.Minute)},
+			{time.Now().Add(-59 * time.Second)},
+			{time.Now().Add(-5 * time.Second)},
+			{time.Now()}},
 	}
 
 	requests.RemoveOlderFrom(time.Now())
 
-	if !reflect.DeepEqual(requests, Requests{}) {
+	if !reflect.DeepEqual(requests.Data, []Request{}) {
 		t.Error("expected to remove all of them")
 	}
 }
@@ -56,7 +56,7 @@ func TestRequests_Add(t *testing.T) {
 
 	requests.Add(newRequest)
 
-	if !reflect.DeepEqual(Requests{*newRequest}, requests) {
+	if !reflect.DeepEqual([]Request{*newRequest}, requests.Data) {
 		t.Error("not successful add operation")
 	}
 }

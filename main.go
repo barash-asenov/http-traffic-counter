@@ -12,7 +12,7 @@ import (
 const ExportFileName = "requests.json"
 const MovingWindow = 1 * time.Minute
 
-var requests *Requests
+var requests = &Requests{Data: []Request{}}
 
 func main() {
 	// load file from disk to ram
@@ -35,8 +35,6 @@ func initializeRequests() error {
 
 	if errors.Is(err, os.ErrNotExist) {
 		// file not exists yet... initialize it empty
-		requests = &Requests{}
-
 		return nil
 	} else if err != nil {
 		// not known error...
@@ -49,7 +47,7 @@ func initializeRequests() error {
 		return err
 	}
 
-	requests = unmarshaledRequests
+	requests.Data = unmarshaledRequests
 
 	return nil
 }

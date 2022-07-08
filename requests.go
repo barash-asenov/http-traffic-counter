@@ -10,13 +10,14 @@ type Request struct {
 	Timestamp time.Time `json:"timestamp"`
 }
 
-type Requests []Request
-
-var m sync.Mutex
+type Requests struct {
+	mu   sync.Mutex
+	Data []Request
+}
 
 // LoadRequests loads requests from disk
-func LoadRequests(content []byte) (*Requests, error) {
-	var requests *Requests
+func LoadRequests(content []byte) ([]Request, error) {
+	var requests []Request
 
 	err := json.Unmarshal(content, &requests)
 
@@ -28,19 +29,19 @@ func LoadRequests(content []byte) (*Requests, error) {
 }
 
 func (r *Requests) Add(request *Request) {
-	m.Lock()
-	defer m.Unlock()
-	*r = append(*r, *request)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	(*r).Data = append((*r).Data, *request)
 }
 
 func (r *Requests) CountWithin(time time.Time) int {
 	totalCount := 0
 
 	// iterate backwards, from the latest and the newest request
-	m.Lock()
-	defer m.Unlock()
-	for i := len(*r) - 1; i >= 0; i-- {
-		if (*r)[i].Timestamp.After(time) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for i := len((*r).Data) - 1; i >= 0; i-- {
+		if (*r).Data[i].Timestamp.After(time) {
 			totalCount++
 		} else {
 			// if it's less, no need to iterate more, all next values will be before the given time
@@ -53,9 +54,9 @@ func (r *Requests) CountWithin(time time.Time) int {
 
 // AsJSON returns byte array of marshalled JSON data
 func (r *Requests) AsJSON() ([]byte, error) {
-	m.Lock()
-	defer m.Unlock()
-	data, err := json.Marshal(*r)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	data, err := json.Marshal((*r).Data)
 	if err != nil {
 		return nil, err
 	}
@@ -71,14 +72,14 @@ func (r *Requests) RemoveOlderFrom(timestamp time.Time) {
 	// index from start to remove
 	toRemoveIndex := 0
 
-	m.Lock()
-	defer m.Unlock()
-	for _, val := range *r {
+	for _, val := range (*r).Data {
 		if val.Timestamp.Before(timestamp) {
 			toRemoveIndex++
 		}
 	}
 
 	// slice out the ones that are out of the given time
-	*r = (*r)[toRemoveIndex:]
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	(*r).Data = (*r).Data[toRemoveIndex:]
 }
