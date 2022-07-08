@@ -9,10 +9,19 @@ import (
 	"time"
 )
 
-const ExportFileName = "requests.json"
-const MovingWindow = 1 * time.Minute
+const DefaultExportFileName = "requests.json"
+const DefaultMovingWindow = 1 * time.Minute
+
+type ServerConfig struct {
+	ExportFileName string
+	MovingWindow   time.Duration
+}
 
 var requests = &Requests{Data: []Request{}}
+var serverConfig = &ServerConfig{
+	ExportFileName: DefaultExportFileName,
+	MovingWindow:   DefaultMovingWindow,
+}
 
 func main() {
 	// load file from disk to ram
@@ -31,7 +40,7 @@ func main() {
 }
 
 func initializeRequests() error {
-	content, err := ioutil.ReadFile(ExportFileName)
+	content, err := ioutil.ReadFile(serverConfig.ExportFileName)
 
 	if errors.Is(err, os.ErrNotExist) {
 		// file not exists yet... initialize it empty

@@ -9,6 +9,7 @@ import (
 )
 
 func RequestCountHandler(w http.ResponseWriter, r *http.Request) {
+	currentTime := time.Now()
 	newRequest := &Request{Timestamp: time.Now()}
 
 	// add new request to object
@@ -16,7 +17,7 @@ func RequestCountHandler(w http.ResponseWriter, r *http.Request) {
 
 	// clean requests older than moving window and persist the requests in goroutine
 	go func() {
-		requests.RemoveOlderFrom(time.Now().Add(-MovingWindow))
+		requests.RemoveOlderFrom(currentTime.Add(-serverConfig.MovingWindow))
 
 		// persist the requests in disk...
 		err := exportRequests(requests)
@@ -26,8 +27,7 @@ func RequestCountHandler(w http.ResponseWriter, r *http.Request) {
 	}()
 
 	// write requests count withing moving window to response-writer
-	requestCount := requests.CountWithin(time.Now().Add(-MovingWindow))
-
+	requestCount := requests.CountWithin(currentTime.Add(-serverConfig.MovingWindow))
 	fmt.Fprintf(w, "Total requests within moving window: %d\n", requestCount)
 }
 
@@ -37,7 +37,9 @@ func exportRequests(r *Requests) error {
 		return err
 	}
 
-	err = ioutil.WriteFile(ExportFileName, data, 0644)
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	err = ioutil.WriteFile(serverConfig.ExportFileName, data, 0644)
 	if err != nil {
 		return err
 	}

@@ -1,3 +1,5 @@
 # ide config
 .idea/
-data/**
+
+# default export file...
+requests.json

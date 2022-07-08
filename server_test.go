@@ -1,13 +1,21 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sync"
 	"testing"
+	"time"
 )
 
 func TestRequestCountHandler(t *testing.T) {
+	serverConfig = &ServerConfig{
+		ExportFileName: "test-requests.json",
+		MovingWindow:   5 * time.Second,
+	}
+
 	t.Run("returns correct response on single executions", func(t *testing.T) {
 		requests = &Requests{}
 
@@ -59,4 +67,19 @@ func TestRequestCountHandler(t *testing.T) {
 			t.Errorf("expected 1001, returned %s\n", res)
 		}
 	})
+
+	t.Cleanup(clearTestResources)
+}
+
+// remove the created file
+func clearTestResources() {
+	if _, err := os.Stat(serverConfig.ExportFileName); err == nil {
+		// remove export file...
+		// normally not very nice to create and delete file that is used in main program... but for
+		// the sake of simplicity
+		err := os.Remove(serverConfig.ExportFileName)
+		if err != nil {
+			log.Println("Failed to remove test file!")
+		}
+	}
 }

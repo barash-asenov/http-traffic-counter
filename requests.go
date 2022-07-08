@@ -72,6 +72,8 @@ func (r *Requests) RemoveOlderFrom(timestamp time.Time) {
 	// index from start to remove
 	toRemoveIndex := 0
 
+	r.mu.Lock()
+	defer r.mu.Unlock()
 	for _, val := range (*r).Data {
 		if val.Timestamp.Before(timestamp) {
 			toRemoveIndex++
@@ -79,7 +81,5 @@ func (r *Requests) RemoveOlderFrom(timestamp time.Time) {
 	}
 
 	// slice out the ones that are out of the given time
-	r.mu.Lock()
-	defer r.mu.Unlock()
 	(*r).Data = (*r).Data[toRemoveIndex:]
 }
