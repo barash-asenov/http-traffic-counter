@@ -48,7 +48,7 @@ func TestRequestCountHandler(t *testing.T) {
 
 		wg.Add(1000)
 		for i := 0; i < 1000; i++ {
-			func() {
+			go func() {
 				defer wg.Done()
 
 				RequestCountHandler(response, request)
