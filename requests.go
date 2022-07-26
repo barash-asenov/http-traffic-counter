@@ -54,6 +54,8 @@ func (r *Requests) CountWithin(time time.Time) int {
 
 // AsJSON returns byte array of marshalled JSON data
 func (r *Requests) AsJSON() ([]byte, error) {
+	r.mu.Lock()
+	r.mu.Unlock()
 	data, err := json.Marshal((*r).Data)
 	if err != nil {
 		return nil, err

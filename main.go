@@ -14,19 +14,24 @@ import (
 
 const DefaultExportFileName = "requests.json"
 const DefaultMovingWindow = 1 * time.Minute
-const MaxRequests = 5
+const DefaultRequestLimit = 5
+const DefaultIpLimit = 1
 
 type ServerConfig struct {
 	ExportFileName string
 	MovingWindow   time.Duration
 	RequestLimit   chan struct{}
+	IpLimit        int
+	ProcessingIps  map[string]chan struct{}
 }
 
 var requests = &Requests{Data: []Request{}}
 var serverConfig = &ServerConfig{
 	ExportFileName: DefaultExportFileName,
 	MovingWindow:   DefaultMovingWindow,
-	RequestLimit:   make(chan struct{}, MaxRequests),
+	RequestLimit:   make(chan struct{}, DefaultRequestLimit),
+	IpLimit:        DefaultIpLimit,
+	ProcessingIps:  make(map[string]chan struct{}),
 }
 
 func main() {
@@ -63,7 +68,7 @@ func main() {
 
 	httpServer := http.Server{
 		Addr:    ":8080",
-		Handler: limit(mux),
+		Handler: IpLimitMiddleware(RateLimitMiddleware(mux)),
 	}
 
 	go func() {
