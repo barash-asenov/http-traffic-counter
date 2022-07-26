@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 )
@@ -33,6 +34,8 @@ var serverConfig = &ServerConfig{
 	IpLimit:        DefaultIpLimit,
 	ProcessingIps:  make(map[string]chan struct{}),
 }
+
+var mu sync.Mutex
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
