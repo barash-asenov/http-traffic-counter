@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -24,6 +27,8 @@ var serverConfig = &ServerConfig{
 }
 
 func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 	// load file from disk to ram
 	err := initializeRequests()
 	if err != nil {
@@ -33,10 +38,67 @@ func main() {
 	// main handler
 	http.HandleFunc("/", RequestCountHandler)
 
-	// start web server
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		log.Fatal(err)
+	jobsFinished := make(chan struct{})
+
+	go func() {
+		defer close(jobsFinished)
+
+		for {
+			select {
+			case <-ctx.Done():
+				// os interrupt or sigterm
+				exportRequests()
+				jobsFinished <- struct{}{}
+			case <-time.After(10 * time.Second):
+				clearRequests()
+				exportRequests()
+			}
+		}
+	}()
+
+	httpServer := http.Server{
+		Addr: ":8080",
 	}
+
+	go func() {
+		err := httpServer.ListenAndServe()
+		if errors.Is(err, http.ErrServerClosed) {
+			log.Println("shutting down server...")
+		} else if err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	<-ctx.Done()
+	<-jobsFinished
+	err = httpServer.Shutdown(context.Background())
+
+	if err != nil {
+		log.Fatalln(err)
+	} else {
+		log.Println("good bye...")
+		os.Exit(0)
+	}
+}
+
+func clearRequests() {
+	currentTime := time.Now()
+	removedRequests := requests.RemoveOlderFrom(currentTime.Add(-serverConfig.MovingWindow))
+	log.Printf("cleared %d requests\n", removedRequests)
+}
+
+func exportRequests() {
+	data, err := requests.AsJSON()
+	if err != nil {
+		log.Printf("export failed %s\n", err)
+	}
+
+	err = ioutil.WriteFile(serverConfig.ExportFileName, data, 0644)
+	if err != nil {
+		log.Printf("export failed %s\n", err)
+	}
+
+	log.Println("exported successfully!")
 }
 
 func initializeRequests() error {
