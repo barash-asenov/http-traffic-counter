@@ -14,16 +14,19 @@ import (
 
 const DefaultExportFileName = "requests.json"
 const DefaultMovingWindow = 1 * time.Minute
+const MaxRequests = 5
 
 type ServerConfig struct {
 	ExportFileName string
 	MovingWindow   time.Duration
+	RequestLimit   chan struct{}
 }
 
 var requests = &Requests{Data: []Request{}}
 var serverConfig = &ServerConfig{
 	ExportFileName: DefaultExportFileName,
 	MovingWindow:   DefaultMovingWindow,
+	RequestLimit:   make(chan struct{}, MaxRequests),
 }
 
 func main() {
@@ -36,7 +39,8 @@ func main() {
 	}
 
 	// main handler
-	http.HandleFunc("/", RequestCountHandler)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", RequestCountHandler)
 
 	jobsFinished := make(chan struct{})
 
@@ -49,6 +53,7 @@ func main() {
 				// os interrupt or sigterm
 				exportRequests()
 				jobsFinished <- struct{}{}
+				return
 			case <-time.After(10 * time.Second):
 				clearRequests()
 				exportRequests()
@@ -57,7 +62,8 @@ func main() {
 	}()
 
 	httpServer := http.Server{
-		Addr: ":8080",
+		Addr:    ":8080",
+		Handler: limit(mux),
 	}
 
 	go func() {
@@ -77,7 +83,6 @@ func main() {
 		log.Fatalln(err)
 	} else {
 		log.Println("good bye...")
-		os.Exit(0)
 	}
 }
 
